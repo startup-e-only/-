@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Итоговый тест CORS</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0e1a;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: rgba(255,255,255,0.03);
+            border-radius: 24px;
+            padding: 30px;
+            border: 1px solid rgba(255,255,255,0.06);
+            text-align: center;
+        }
+        h1 { color: #00ff88; font-size: 22px; margin-bottom: 8px; }
+        .subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(0,0,0,0.3);
+            color: #e0e0e0;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+            outline: none;
+            box-sizing: border-box;
+        }
+        textarea:focus { border-color: #00ff88; }
+        button {
+            padding: 10px 28px;
+            border-radius: 40px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: #00ff88;
+            color: #0a0e1a;
+            margin-top: 12px;
+        }
+        button:hover { box-shadow: 0 0 30px rgba(0,255,136,0.15); transform: scale(1.02); }
+        button:active { transform: scale(0.97); }
+        #result {
+            margin-top: 20px;
+            padding: 16px;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.04);
+            min-height: 50px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: left;
+        }
+        .success { color: #00ff88; }
+        .error { color: #ff6b6b; }
+        .info { color: #66ccff; }
+        .status {
+            margin-top: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: inline-block;
+            background: rgba(255,255,255,0.03);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🚀 Финальный тест CORS</h1>
+    <div class="subtitle">Проверка соединения с обновлённым скриптом</div>
+
+    <textarea id="messageInput">Привет! Напиши кратко, как дела?</textarea>
+    <br>
+    <button id="sendBtn">📤 Отправить запрос</button>
+
+    <div id="result">⏳ Ожидание запроса...</div>
+    <div class="status" id="statusText">● Готов</div>
+</div>
+
+<script>
+    // ============================================================
+    //  ВАША НОВАЯ ССЫЛКА
+    // ============================================================
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybQmN_cVov7T3jh3Zrlgko06H5l5Mh2kp4EZ6xuOdTxYEdPkD6WrAPKtwZKjYc-tCI/exec';
+
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const resultDiv = document.getElementById('result');
+    const statusText = document.getElementById('statusText');
+
+    async function sendRequest() {
+        const message = messageInput.value.trim();
+        if (!message) {
+            resultDiv.innerHTML = '<span class="error">⚠️ Введите текст сообщения.</span>';
+            return;
+        }
+
+        // Обновляем UI
+        resultDiv.innerHTML = '<span class="info">⏳ Отправка запроса...</span>';
+        statusText.textContent = '⏳ Отправка...';
+        sendBtn.disabled = true;
+        sendBtn.textContent = '⏳ ...';
+
+        try {
+            const response = await fetch(SCRIPT_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'sendToAI',
+                    agent: 'Ermak X', // Убедитесь, что этот агент существует в Properties
+                    message: message,
+                    timestamp: new Date().toISOString()
+                })
+            });
+
+            // Проверяем статус ответа
+            if (!response.ok) {
+                throw new Error(`HTTP ошибка: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            // Анализируем ответ
+            if (data && data.success) {
+                const reply = data.response || '✅ Ответ получен, но он пустой.';
+                resultDiv.innerHTML = `<span class="success">✅ Ответ от AI:</span>\n\n${reply}`;
+                statusText.textContent = '✅ Успешно';
+                statusText.style.color = '#00ff88';
+            } else {
+                const errorMsg = data?.error || 'Неизвестная ошибка на сервере.';
+                resultDiv.innerHTML = `<span class="error">❌ Ошибка от сервера:</span>\n${errorMsg}`;
+                statusText.textContent = '❌ Ошибка';
+                statusText.style.color = '#ff6b6b';
+            }
+
+        } catch (error) {
+            // Обработка ошибок сети и CORS
+            let errorMessage = error.message;
+            if (error.message === 'Failed to fetch') {
+                errorMessage = '❌ Ошибка CORS или скрипт недоступен.\n' +
+                               '1. Убедитесь, что вы переопубликовали скрипт с CORS заголовками.\n' +
+                               '2. Проверьте, что в скрипте есть функция doPost().\n' +
+                               '3. Убедитесь, что доступ к скрипту открыт для "Всех".';
+            }
+            resultDiv.innerHTML = `<span class="error">⚠️ Ошибка соединения:</span>\n${errorMessage}`;
+            statusText.textContent = '❌ Ошибка';
+            statusText.style.color = '#ff6b6b';
+        }
+
+        // Возвращаем кнопку в исходное состояние
+        sendBtn.disabled = false;
+        sendBtn.textContent = '📤 Отправить запрос';
+    }
+
+    // Обработчик кнопки
+    sendBtn.addEventListener('click', sendRequest);
+
+    // Отправка по Enter (без Shift)
+    messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendRequest();
+        }
+    });
+
+    // Вывод информации в консоль для отладки
+    console.log('🔗 URL скрипта:', SCRIPT_URL);
+    console.log('📤 Тест готов. Нажмите "Отправить запрос"');
+</script>
+</body>
+</html>
